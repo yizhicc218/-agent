@@ -1,0 +1,152 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a teacher or student in the system.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["teacher", "student"] },
+        "email": { "type": "string" },
+        "avatar": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "role", "email"]
+    },
+    "Class": {
+      "title": "Class",
+      "description": "A physical or virtual class group.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "type": { "type": "string", "enum": ["group", "one-on-one"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "teacherId", "type"]
+    },
+    "Membership": {
+      "title": "Membership",
+      "description": "Links a student to a class.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "classId": { "type": "string" },
+        "role": { "type": "string" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "classId"]
+    },
+    "Homework": {
+      "title": "Homework",
+      "description": "A homework task created by a teacher.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "classId": { "type": "string" },
+        "deadline": { "type": "string", "format": "date-time" },
+        "behaviorMonitor": { "type": "boolean" },
+        "revisionAllowed": { "type": "boolean" },
+        "aiManaged": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "content": { "type": "string" },
+              "imageUrl": { "type": "string" },
+              "type": { "type": "string" },
+              "correctAnswer": { "type": "string" },
+              "knowledgePoints": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      },
+      "required": ["id", "title", "teacherId", "classId", "deadline"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "A student's answer to a homework task.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "homeworkId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "submitted", "graded"] },
+        "answers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "questionId": { "type": "string" },
+              "studentAnswer": { "type": "string" },
+              "studentImage": { "type": "string" },
+              "grade": { "type": "string" },
+              "feedback": { "type": "string" },
+              "errorType": { "type": "string", "enum": ["concept", "notation", "carelessness"] },
+              "knowledgePoints": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "behaviorLog": { "type": "array", "items": { "type": "object" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "gradedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "homeworkId", "studentId", "status"]
+    },
+    "StudentProfile": {
+      "title": "StudentProfile",
+      "description": "AI-generated profile of a student's physics performance.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "weakPoints": { "type": "array", "items": { "type": "string" } },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "concept": { "type": "integer" },
+            "notation": { "type": "integer" },
+            "carelessness": { "type": "integer" }
+          }
+        },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/classes/{classId}": {
+      "schema": "Class",
+      "description": "Class groups."
+    },
+    "/memberships/{membershipId}": {
+      "schema": "Membership",
+      "description": "Class membership records."
+    },
+    "/homeworks/{homeworkId}": {
+      "schema": "Homework",
+      "description": "Homework assignments."
+    },
+    "/submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Homework submissions."
+    },
+    "/student_profiles/{studentId}": {
+      "schema": "StudentProfile",
+      "description": "Detailed student performance analytics."
+    }
+  }
+}

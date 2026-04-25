@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ---------------------------------------------------------
+    // 1. GLOBALS & HELPERS
+    // ---------------------------------------------------------
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // ---------------------------------------------------------
+    // 2. ENTITY VALIDATORS
+    // ---------------------------------------------------------
+
+    function isValidUser(data) {
+      return data.id == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.role in ['teacher', 'student'] &&
+             data.email == request.auth.token.email;
+    }
+
+    function isValidHomework(data) {
+      return data.teacherId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.classId is string &&
+             data.deadline is timestamp;
+    }
+
+    function isValidSubmission(data) {
+      return data.studentId == request.auth.uid &&
+             data.homeworkId is string &&
+             data.status in ['submitted', 'pending', 'graded'];
+    }
+
+    // ---------------------------------------------------------
+    // 3. DEFAULT DENY
+    // ---------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------
+    // 4. COLLECTION RULES
+    // ---------------------------------------------------------
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow create, update: if isEmailVerified() && isValidUser(incoming());
+      allow list: if false; // Prevention of user scraping
+    }
+
+    match /classes/{classId} {
+      allow get: if isSignedIn();
+      allow create: if isEmailVerified() && incoming().teacherId == request.auth.uid;
+      allow list: if isSignedIn();
+    }
+
+    match /memberships/{membershipId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || 
+                     get(/databases/$(database)/documents/classes/$(resource.data.classId)).data.teacherId == request.auth.uid);
+      allow create: if isEmailVerified();
+    }
+
+    match /homeworks/{homeworkId} {
+      allow read: if isSignedIn();
+      allow create: if isEmailVerified() && isValidHomework(incoming());
+      allow update: if isEmailVerified() && existing().teacherId == request.auth.uid && isValidHomework(incoming());
+      allow delete: if isSignedIn() && existing().teacherId == request.auth.uid;
+    }
+
+    match /submissions/{submissionId} {
+      allow read: if isSignedIn() && (resource.data.studentId == request.auth.uid || 
+                     get(/databases/$(database)/documents/homeworks/$(resource.data.homeworkId)).data.teacherId == request.auth.uid);
+      allow create: if isEmailVerified() && isValidSubmission(incoming()) && incoming().status == 'submitted';
+      allow update: if isEmailVerified() && (
+        // Student updating their submission (optional, depending on revisionAllowed)
+        (existing().studentId == request.auth.uid && incoming().status == 'submitted' && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['answers', 'submittedAt', 'behaviorLog'])) ||
+        // Teacher grading
+        (request.auth.uid == get(/databases/$(database)/documents/homeworks/$(existing().homeworkId)).data.teacherId && 
+         incoming().status == 'graded' && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['answers', 'status', 'gradedAt']))
+      );
+    }
+
+    match /student_profiles/{studentId} {
+      allow get: if isSignedIn() && (request.auth.uid == studentId || 
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid))); // Broad for now, but in reality should check if teacher of student
+      allow write: if false; // System only or custom logic
+    }
+  }
+}

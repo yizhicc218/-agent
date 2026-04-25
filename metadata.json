@@ -1,0 +1,12 @@
+{
+  "name": "PhysicsQuest AI (物理智引 AI)",
+  "description": "初高中物理多模态智能教培 Agent，集 OCR 识别、全题型智能批改、周度学情画像与自动化课后管理于一体。",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "multi_modal_ocr",
+    "intelligent_grading",
+    "personalized_student_profile"
+  ]
+}
